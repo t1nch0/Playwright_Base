@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
 import { config } from "../config";
+import { logger } from "../utils/logger";
 
 export class BasePage {
     protected page: Page;
@@ -7,7 +8,7 @@ export class BasePage {
         this.page = page;
     }
     async navigateTo(url: string) {
-        console.log(config.baseURL);
+        logger.info(`navigating to URL: ${config.baseURL}`);
         await this.page.goto(url, {
             waitUntil: 'domcontentloaded'
         });

@@ -1,0 +1,68 @@
+name: QA automation Tests execution
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Test environment'
+        required: true
+        default: 'qa'
+        type: choice
+        options:
+          - qa
+          - stg
+      tags:
+        description: 'Tags to execute'
+        required: true
+        default: '@test'
+jobs:
+  test_execution:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: lts/*
+      - name: cache Node.js dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{runner.os}}-node-${{hashFiles('**/package-lock.json')}}
+          restore-keys: |
+            ${{runner.os}}-node-
+      - name: Install dependencies
+        run: npm ci
+      - name: Cache playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{runner.os}}-playwright-${{hashFiles('**/package-lock.json')}}
+          restore-keys: $
+      - name: Install Playwright Browsers
+        run: npx playwright install --with-deps
+      - name: Run tests
+        env:
+          QA_URL: ${{secrets.QA_URL}}
+          QA_USER: ${{secrets.QA_USER}}
+          QA_PASS: ${{secrets.QA_PASS}}
+          
+        run: |           
+            npm run test:${{ github.event.inputs.environment }} -- --grep "${{github.event.inputs.tags}}"
+      - name: set short SHA and datetime
+        if: always()
+        id: vars
+        run: |
+          echo "sha_short=$(echo $GITHUB_SHA | cut -c1-7)" >> $GITHUB_OUTPUT
+          echo "datetime=$(date +'%Y-%m-%d_%H-%M')" >> $GITHUB_OUTPUT
+  
+      - name: upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playwright-report-${{steps.vars.outputs.datetime}}-${{steps.vars.outputs.sha_short}}
+          path: playwright-report/
+      - name: upload test logs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-logs-${{steps.vars.outputs.datetime}}-${{steps.vars.outputs.sha_short}}
