@@ -66,3 +66,4 @@ jobs:
         if: always()
         with:
           name: test-logs-${{steps.vars.outputs.datetime}}-${{steps.vars.outputs.sha_short}}
+          path: logs
